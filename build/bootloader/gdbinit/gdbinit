@@ -1,0 +1,2 @@
+source /home/mayflowers/TR5-MUGAR/build/bootloader/gdbinit/symbols
+source /home/mayflowers/TR5-MUGAR/build/bootloader/gdbinit/connect
