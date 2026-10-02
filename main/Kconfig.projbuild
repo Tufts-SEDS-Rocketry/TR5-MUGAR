@@ -1,0 +1,11 @@
+menu "Board Behavior"
+    config AIRBRAKE_COMPUTER
+        bool "Does the computer control the airbrakes"
+        default n
+    config GYRO_CALIB
+        bool "Should run gyro calibration"
+        default n
+    config USE_GYRO_CALIB
+        bool "Should use gyro calibrations"
+        default y
+endmenu

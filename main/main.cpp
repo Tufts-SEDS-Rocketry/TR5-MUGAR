@@ -20,17 +20,12 @@
 #include "i2c/TMP1075.h"
 #include "errors.h"
 #include "sd.h"
+#include "sdkconfig.h"
 #include "sensor/barometer.h"
 
 static const char *TAG = "main";
 
 using namespace seds::errors;
-
-constexpr bool AIRBRAKE_COMPUTER = false;
-
-constexpr bool GYRO_CALIB = false;
-
-constexpr bool USE_GYRO_CALIB = true;
 
 constexpr bool FAIL_ON_NO_SD = false;
 
@@ -102,7 +97,7 @@ extern "C" void app_main()
         ESP_LOGE(TAG, "imu not connected!");
     }
 
-    if (GYRO_CALIB) {
+    #ifdef GYRO_CALIB
         std::array<uint16_t, 6> results = unwrap(imu.calibrate_gyro(true));
 
         ESP_LOGI(TAG, "x offset: %lu (%f), x gain: %lu, y offset: %lu (%f), y gain: %lu, z offset: %lu (%f), z gain: %lu",
@@ -113,16 +108,15 @@ extern "C" void app_main()
             (uint32_t) results[4], (float) results[4] * 0.061,
             (uint32_t) results[5]
         );
-    }
     
-    else {
-        if (USE_GYRO_CALIB) {
+    #else 
+        #if USE_GYRO_CALIB
             imu.set_gyro_calib(
                 GYRO_CALIB_OFFSETS[0], GYRO_CALIB_GAINS[0],
                 GYRO_CALIB_OFFSETS[1], GYRO_CALIB_GAINS[1],
                 GYRO_CALIB_OFFSETS[2], GYRO_CALIB_GAINS[2]
             );
-        }
+        #endif 
 
         seds::HighGAccel high_g = unwrap(seds::HighGAccel::create( unwrap(i2c->get_device(seds::HighGAccel::default_address)) ));
         if (high_g.is_connected()) {
@@ -190,7 +184,7 @@ extern "C" void app_main()
         }*/
        std::optional<seds::GPS> gps = std::nullopt;
 
-        if (AIRBRAKE_COMPUTER) {
+        #ifdef AIRBRAKE_COMPUTER 
             auto airbrakes = unwrap(seds::Airbrakes::create(
                 std::move(baro_sensor_1), 
                 std::move(baro_sensor_2), 
@@ -200,7 +194,7 @@ extern "C" void app_main()
                 std::move(gps)
             ));
             airbrakes.run_steps();
-        } else {
+        #else
             auto fc = seds::FlightComputer {
                 .baro1 = baro_sensor_1,
                 .baro2 = baro_sensor_2,
@@ -213,9 +207,8 @@ extern "C" void app_main()
 
             auto init_res = fc.init();
             fc.process(10, true);
-        }
-    }
-    
+        #endif
+    #endif 
 }
 
 
