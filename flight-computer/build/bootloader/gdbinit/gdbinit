@@ -1,0 +1,2 @@
+source /home/mayflowers/TR5-MUGAR/flight-computer/build/bootloader/gdbinit/symbols
+source /home/mayflowers/TR5-MUGAR/flight-computer/build/bootloader/gdbinit/connect
