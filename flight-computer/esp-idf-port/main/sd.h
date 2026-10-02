@@ -1,0 +1,111 @@
+#pragma once
+
+#include <atomic>
+#include <expected>
+#include <sys/unistd.h>
+#include <sys/stat.h>
+#include <variant>
+
+#include "errors.h"
+#include "utils.h"
+
+#include "esp_log.h"
+#include "esp_err.h"
+#include "esp_vfs_fat.h"
+#include "sdmmc_cmd.h"
+
+#define EXAMPLE_MAX_CHAR_SIZE 64
+const uint32_t MAX_FILES = 10; // ?
+const gpio_num_t PIN_NUM_MOSI = (gpio_num_t)13;
+const gpio_num_t PIN_NUM_MISO = (gpio_num_t)12; 
+const gpio_num_t PIN_NUM_CLK = (gpio_num_t)14; 
+const gpio_num_t PIN_NUM_CS = (gpio_num_t)5; 
+
+const size_t SAFE_DMA_BUF_PREFERRED_KB = 32;
+const size_t chunk_bytes = SAFE_DMA_BUF_PREFERRED_KB * 1024;
+
+const size_t VFS_STDIO_BUF_PREFERRED_KB = 32;  // Preferred stdio buffer size
+const size_t VFS_DMA_BUF_PREFERRED_KB = 8;     // Preferred DMA buffer size
+
+constexpr size_t SD_DMA_BUF_LEN = VFS_DMA_BUF_PREFERRED_KB * 1024;
+
+// Normally, making a constant is preferred to using a definition
+// Here, we want a definition for a specific purpose
+// When a user wants to create a file, they must specify the path, including the mount path
+// If we use a const, the normal path name must be concatenated with the actual path
+// This requires either a fixed length buffer (bad for potential writing into uninitialized memory)
+// Or malloc (bad for performance)
+// Here, the user just writes MOUNT_POINT/path
+#define MOUNT_POINT "/sdcard"
+#define MOUNT_POINT_LEN (sizeof(MOUNT_POINT))
+
+// Example reference:
+// https://github.com/espressif/esp-idf/blob/v5.5.2/examples/storage/sd_card/sdspi/main/sd_card_example_main.c
+
+namespace seds {
+    using namespace seds::errors;
+
+    struct log_args {
+        const char* path;
+        uint8_t* buffers[2];
+        std::atomic<size_t> *insert_idxs;
+        std::atomic<size_t> *which_buffer;
+        size_t write_size;
+    };  
+
+    class SDCard {
+    public:
+        SDCard(SDCard&&) = default;
+        SDCard& operator=(SDCard&&) = default;
+        SDCard(SDCard const&) = delete;
+        SDCard& operator=(SDCard&) = delete;
+
+        ~SDCard() {
+            //esp_vfs_fat_sdcard_unmount(MOUNT_POINT, card);
+            //spi_bus_free((spi_host_device_t)host.slot); // TODO CHANGE
+        }
+
+        static Expected<SDCard> create();
+
+        static SDCard fake_sd() {
+            SDCard sd = SDCard();
+            sd.is_real_sd = false;
+            return sd;
+        }
+
+        Expected<std::monostate> create_file(const char* path, const uint8_t* data, size_t length);
+        Expected<std::monostate> create_file_numbered_name(const char* name, const char* ext,  const uint8_t* data, size_t length, char* filename, size_t buf_size);
+
+        // inefficient - don't use
+        // if you need specific access just use posix functions for now
+        // TODO - figure out how to control file function access 
+
+        /*
+        // Don't allocate for the user so that they have the option to use a predefined buffer
+        /// Make sure to add a null-terminator if needed
+        Expected<std::monostate> read_file(const char *path, uint8_t* buffer, size_t length);
+
+        Expected<std::monostate> append_file(const char *path, const uint8_t* data, size_t length);
+
+        Expected<std::monostate> flush_file(const char *path);
+
+        /// If the old file doesn't exist, or the new file does, this function errors
+        Expected<std::monostate> rename_file(const char* old_name, const char* new_name);
+
+        Expected<std::monostate> format_fatfs();
+
+        Expected<struct stat> stat_file(const char* path);
+        */
+        // TODO: how to signal error from this task?
+
+        // TODO: can we do this without atomics?
+        Expected<TaskHandle_t> create_log_task(struct log_args args);
+        
+    private:
+        //SDCard(sdmmc_card_t *v_card, sdmmc_host_t v_host) :  card(v_card), host(v_host) {}
+        //sdmmc_card_t* card = NULL;
+        //sdmmc_host_t host;
+        SDCard() {}
+        bool is_real_sd = true;
+    };
+}

@@ -1,0 +1,221 @@
+#include <cstdio>
+#include "sdkconfig.h"
+
+#include "airbrakes/airbrakes.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "esp_log.h"
+#include "computer/computer.h"
+#include "driver/i2c_master.h"
+#include <driver/ledc.h>
+#include "driver/mcpwm_prelude.h"
+#include "gps/gps.h"
+#include "gps/pa1616d.h"
+#include "i2c/BMI323.h"
+#include "i2c/BMP581.h"
+#include "i2c/high_g_accel.h"
+#include "i2c/I2C.h"
+#include "i2c/MLX90395.h"
+#include "i2c/segment7.h"
+#include "i2c/TMP1075.h"
+#include "errors.h"
+#include "sd.h"
+#include "sensor/barometer.h"
+
+static const char *TAG = "main";
+
+using namespace seds::errors;
+
+constexpr bool AIRBRAKE_COMPUTER = false;
+
+constexpr bool GYRO_CALIB = false;
+
+constexpr bool USE_GYRO_CALIB = true;
+
+constexpr bool FAIL_ON_NO_SD = false;
+
+const uint16_t GYRO_CALIB_OFFSETS[3] = {4, 1, 1023};
+const uint16_t GYRO_CALIB_GAINS[3] = {0, 0, 0};//{123, 122, 3};
+
+extern "C" void app_main()
+{
+    gpio_reset_pin(seds::DROGUE_CONT);
+    gpio_reset_pin(seds::MAIN_CONT);
+    gpio_reset_pin(seds::DROGUE_CHUTE);
+    gpio_reset_pin(seds::MAIN_CHUTE);
+    
+    gpio_set_direction(seds::DROGUE_CONT, GPIO_MODE_INPUT);
+    gpio_set_direction(seds::MAIN_CONT, GPIO_MODE_INPUT);
+    gpio_set_direction(seds::DROGUE_CHUTE, GPIO_MODE_OUTPUT);
+    gpio_set_direction(seds::MAIN_CHUTE, GPIO_MODE_OUTPUT);
+
+    gpio_set_pull_mode(seds::DROGUE_CONT, GPIO_FLOATING);
+    gpio_set_pull_mode(seds::MAIN_CONT, GPIO_FLOATING);
+
+    gpio_set_level(seds::DROGUE_CHUTE, 0);
+    gpio_set_level(seds::MAIN_CHUTE, 0);
+
+    ESP_LOGI(TAG, "Hello!");
+
+    auto i2c = seds::I2C::create();
+    ESP_LOGI(TAG, "I2C initialized successfully");
+
+    // should we have a template function for calling `create`?
+
+    std::shared_ptr<seds::Barometer> baro_sensor_1 = std::make_shared<seds::Barometer>();
+    std::shared_ptr<seds::Barometer> baro_sensor_2 = std::make_shared<seds::Barometer>();
+    {
+        bool baro_1_set = false;
+        seds::Expected<seds::BMP581> baro_sensor_1_bmp = seds::BMP581::create( unwrap(i2c->get_device(seds::BMP581::address_1)));
+        // otherwise i2c gets angry about NACKs
+        vTaskDelay(pdMS_TO_TICKS(10));
+
+        if (baro_sensor_1_bmp.has_value()) {
+            baro_sensor_1 = std::make_shared<seds::BMP581>(unwrap(move(baro_sensor_1_bmp)));
+            baro_1_set = true;
+        }
+
+        seds::Expected<seds::BMP581> baro_sensor_2_bmp  = seds::BMP581::create( unwrap(i2c->get_device(seds::BMP581::address_2)));
+        vTaskDelay(pdMS_TO_TICKS(10)); 
+
+        if (baro_sensor_2_bmp.has_value()) {
+            if (baro_1_set) {
+                baro_sensor_2 = std::make_shared<seds::BMP581>(unwrap(move(baro_sensor_2_bmp)));
+            } else {
+                ESP_LOGI(TAG, "No baro1, replacing it with baro2");
+                baro_sensor_1 = std::make_shared<seds::BMP581>(unwrap(move(baro_sensor_2_bmp)));
+            }
+        } else if (!baro_1_set) {
+            // no baro set, fail
+            ESP_LOGE(TAG, "failed to boot both barometers");
+            return;
+        }
+    }
+
+    //auto disp = seds::TCA6507( unwrap(i2c->get_device(0x45))); //  figure out how this works exactly!
+    // remember that we need two busses - one just controls one of the 7-segment devices
+
+    seds::BMI323 imu = unwrap(seds::BMI323::create( unwrap(i2c->get_device(seds::BMI323::default_address)) ));
+    if (imu.is_connected()) {
+        ESP_LOGI(TAG, "imu connected!");
+    } else {
+        ESP_LOGE(TAG, "imu not connected!");
+    }
+
+    if (GYRO_CALIB) {
+        std::array<uint16_t, 6> results = unwrap(imu.calibrate_gyro(true));
+
+        ESP_LOGI(TAG, "x offset: %lu (%f), x gain: %lu, y offset: %lu (%f), y gain: %lu, z offset: %lu (%f), z gain: %lu",
+            (uint32_t) results[0], (float) results[0] * 0.061,
+            (uint32_t) results[1],
+            (uint32_t) results[2], (float) results[2] * 0.061,
+            (uint32_t) results[3],
+            (uint32_t) results[4], (float) results[4] * 0.061,
+            (uint32_t) results[5]
+        );
+    }
+    
+    else {
+        if (USE_GYRO_CALIB) {
+            imu.set_gyro_calib(
+                GYRO_CALIB_OFFSETS[0], GYRO_CALIB_GAINS[0],
+                GYRO_CALIB_OFFSETS[1], GYRO_CALIB_GAINS[1],
+                GYRO_CALIB_OFFSETS[2], GYRO_CALIB_GAINS[2]
+            );
+        }
+
+        seds::HighGAccel high_g = unwrap(seds::HighGAccel::create( unwrap(i2c->get_device(seds::HighGAccel::default_address)) ));
+        if (high_g.is_connected()) {
+            ESP_LOGI(TAG, "high g accel connected!");
+        } else {
+            ESP_LOGE(TAG, "high g accel not connected!");
+        }
+
+        //seds::MLX90395 mag_sensor = unwrap(seds::MLX90395::create( unwrap(i2c->get_device(seds::MLX90395::default_address)) ));
+        seds::TMP1075 temp_sensor = unwrap(i2c->get_device<seds::TMP1075>());
+        if (temp_sensor.is_connected()) {
+            ESP_LOGI(TAG, "temp sensor connected!");
+        } else {
+            ESP_LOGE(TAG, "temp sensor not connected!");
+        }
+
+        
+        auto baro_data_try = baro_sensor_1->read_data();
+        auto baro_data_try_2 = baro_sensor_2->read_data();
+        if (!baro_data_try.has_value() || !baro_data_try_2.has_value()) {
+            ESP_LOGE(TAG, "baro data read failed");
+        } else {
+            seds::BarometerData data1 = baro_data_try.value();
+            seds::BarometerData data2 = baro_data_try_2.value();
+            ESP_LOGI(TAG, "baro 1 temp: %f, baro 2 temp: %f, baro 1 pressure: %f, baro 2 pressure: %f", 
+                data1.baro_temp, data2.baro_temp, data1.pressure, data2.pressure);
+        }
+        
+        auto high_g_data_try = high_g.read_acceleration();
+        auto imu_data = imu.read_imu();
+        if (!high_g_data_try.has_value() || !imu_data.has_value()) {
+            ESP_LOGE(TAG, "high g or imu data read failed");
+        } else {
+            seds::HighGAccelData data1 = high_g_data_try.value();
+            seds::IMUData data2 = imu_data.value();
+            ESP_LOGI(TAG, "imu ax: %f, high g ax: %f, imu ay: %f, high g ay: %f, imu az: %f, high g az: %f", 
+                data2.ax, data1.h_ax, data2.ay, data1.h_ay, data2.az, data1.h_az);
+        }
+        
+        Expected<seds::SDCard> sd_maybe = seds::SDCard::create();
+        seds::SDCard sd = seds::SDCard::fake_sd();
+
+        if (!sd_maybe.has_value()) {
+            ESP_LOGE(TAG, "No sd card detected!");
+            if (FAIL_ON_NO_SD) {
+                ESP_LOGE(TAG, "No sd card, failing");
+                return;
+            }
+        } else {
+            sd = seds::SDCard(unwrap(std::move(sd_maybe)));
+        }
+           
+        
+        //Allow other core to finish initialization
+        vTaskDelay(pdMS_TO_TICKS(100));
+
+        /*Expected<seds::GPS> gps_res = seds::GPS::create();
+        std::optional<seds::GPS> gps = std::nullopt;
+        if (gps_res.has_value()) {
+            gps = unwrap(std::move(gps_res));
+            ESP_LOGI(TAG, "created gps");
+        }
+        else {
+            ESP_LOGE(TAG, "Failed to create gps");
+        }*/
+       std::optional<seds::GPS> gps = std::nullopt;
+
+        if (AIRBRAKE_COMPUTER) {
+            auto airbrakes = unwrap(seds::Airbrakes::create(
+                std::move(baro_sensor_1), 
+                std::move(baro_sensor_2), 
+                std::move(imu), 
+                std::move(high_g), 
+                std::move(sd),
+                std::move(gps)
+            ));
+            airbrakes.run_steps();
+        } else {
+            auto fc = seds::FlightComputer {
+                .baro1 = baro_sensor_1,
+                .baro2 = baro_sensor_2,
+                .imu = std::move(imu),
+                .high_g_accel = std::move(high_g),
+                //.mag = std::move(mag_sensor),
+                .temp = std::move(temp_sensor),
+                .sd = std::move(sd)
+            };
+
+            auto init_res = fc.init();
+            fc.process(10, true);
+        }
+    }
+    
+}
+
+

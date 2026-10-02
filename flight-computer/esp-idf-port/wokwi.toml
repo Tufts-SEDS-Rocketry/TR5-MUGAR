@@ -1,0 +1,5 @@
+[wokwi]
+version = 1
+elf = "build/kindlevan.elf"
+firmware = "build/kindlevan.elf"
+gdbServerPort = 3333
