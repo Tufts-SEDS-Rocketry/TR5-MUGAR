@@ -6,7 +6,11 @@ The goal of this project is to make the flight computer code more extensible and
 
 Open just this folder in VS Code, not the parent repository.
 
-Make sure to install ESP-IDF `v6.0`. To get editor completions, install the ESP-IDF and C++ VS Code extensions (clangd won't work because the framework uses a GCC toolchain). Then, run "ESP-IDF: Add VS Code configuration folder" from the command palette.
+1. Run `eim install -c eim_config.toml` to install the correct ESP-IDF version.
+2. Install the VS Code ESP-IDF and clangd extensions (not the C/C++ extension).
+3. Run in VS Code: `ESP-IDF: Select Current ESP-IDF Version` and select 6.0.1
+4. Run in VS Code: `ESP-IDF: Configure Project for ESP-Clang` to set up IntelliSense
+5. Reload the VS Code window.
 
 Optionally, you can also run "ESP-IDF: Add Docker Container configuration" which will create a devcontainer config.
 

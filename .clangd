@@ -1,0 +1,8 @@
+CompileFlags:
+  # GCC-only flags from ESP-IDF that clang doesn't recognise. -Werror is removed
+  # so clang-only warnings show as warnings instead of errors.
+  Remove:
+    - -fno-shrink-wrap
+    - -fstrict-volatile-bitfields
+    - -fno-tree-switch-conversion
+    - -Werror

@@ -1,0 +1,5 @@
+# ESP-IDF version for this project. Install it with:
+#   eim install -c eim_config.toml
+# Keep this in sync with the idf version in main/idf_component.yml.
+idf_versions = ["v6.0.1"]
+target = ["esp32"]
