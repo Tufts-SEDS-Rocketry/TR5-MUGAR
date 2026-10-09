@@ -6,9 +6,10 @@ The goal of this project is to make the flight computer code more extensible and
 
 Open just this folder in VS Code, not the parent repository.
 
-1. Run `eim install -c eim_config.toml` to install the correct ESP-IDF version.
+1. Either run `eim install -c eim_config.toml` to install the correct ESP-IDF version,
+   or use the EIM app to install v6.0.1.
 2. Install the VS Code ESP-IDF and clangd extensions (not the C/C++ extension).
-3. Run in VS Code: `ESP-IDF: Select Current ESP-IDF Version` and select 6.0.1
+3. Run in VS Code: `ESP-IDF: Select Current ESP-IDF Version` and select v6.0.1
 4. Run in VS Code: `ESP-IDF: Configure Project for ESP-Clang` to set up IntelliSense
 5. Reload the VS Code window.
 
