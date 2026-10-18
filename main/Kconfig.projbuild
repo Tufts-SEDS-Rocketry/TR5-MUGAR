@@ -8,4 +8,8 @@ menu "Board Behavior"
     config USE_GYRO_CALIB
         bool "Should use gyro calibrations"
         default y
+    config FAIL_ON_NO_SD
+        bool "Should the computer fail to start if no SD is inserted"
+        default y if !AIRBRAKE_COMPUTER
+        default n 
 endmenu

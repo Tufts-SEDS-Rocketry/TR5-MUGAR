@@ -27,8 +27,6 @@ static const char *TAG = "main";
 
 using namespace seds::errors;
 
-constexpr bool FAIL_ON_NO_SD = false;
-
 const uint16_t GYRO_CALIB_OFFSETS[3] = {4, 1, 1023};
 const uint16_t GYRO_CALIB_GAINS[3] = {0, 0, 0};//{123, 122, 3};
 
@@ -161,10 +159,10 @@ extern "C" void app_main()
 
         if (!sd_maybe.has_value()) {
             ESP_LOGE(TAG, "No sd card detected!");
-            if (FAIL_ON_NO_SD) {
+            #ifdef FAIL_ON_NO_SD 
                 ESP_LOGE(TAG, "No sd card, failing");
                 return;
-            }
+            #endif 
         } else {
             sd = seds::SDCard(unwrap(std::move(sd_maybe)));
         }
