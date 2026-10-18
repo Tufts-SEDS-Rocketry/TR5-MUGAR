@@ -631,10 +631,16 @@ CONFIG_PARTITION_TABLE_MD5=y
 # end of Partition Table
 
 #
-# Test
+# Board Behavior
 #
 CONFIG_AIRBRAKE_COMPUTER=y
-# end of Test
+# default:
+# CONFIG_GYRO_CALIB is not set
+# default:
+CONFIG_USE_GYRO_CALIB=y
+# default:
+# CONFIG_FAIL_ON_NO_SD is not set
+# end of Board Behavior
 
 #
 # Compiler options

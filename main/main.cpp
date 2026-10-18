@@ -95,7 +95,7 @@ extern "C" void app_main()
         ESP_LOGE(TAG, "imu not connected!");
     }
 
-    #ifdef GYRO_CALIB
+    #if CONFIG_GYRO_CALIB
         std::array<uint16_t, 6> results = unwrap(imu.calibrate_gyro(true));
 
         ESP_LOGI(TAG, "x offset: %lu (%f), x gain: %lu, y offset: %lu (%f), y gain: %lu, z offset: %lu (%f), z gain: %lu",
@@ -108,7 +108,7 @@ extern "C" void app_main()
         );
     
     #else 
-        #if USE_GYRO_CALIB
+        #if CONFIG_USE_GYRO_CALIB
             imu.set_gyro_calib(
                 GYRO_CALIB_OFFSETS[0], GYRO_CALIB_GAINS[0],
                 GYRO_CALIB_OFFSETS[1], GYRO_CALIB_GAINS[1],
@@ -159,7 +159,7 @@ extern "C" void app_main()
 
         if (!sd_maybe.has_value()) {
             ESP_LOGE(TAG, "No sd card detected!");
-            #ifdef FAIL_ON_NO_SD 
+            #if CONFIG_FAIL_ON_NO_SD 
                 ESP_LOGE(TAG, "No sd card, failing");
                 return;
             #endif 
@@ -182,7 +182,7 @@ extern "C" void app_main()
         }*/
        std::optional<seds::GPS> gps = std::nullopt;
 
-        #ifdef AIRBRAKE_COMPUTER 
+        #if CONFIG_AIRBRAKE_COMPUTER 
             auto airbrakes = unwrap(seds::Airbrakes::create(
                 std::move(baro_sensor_1), 
                 std::move(baro_sensor_2), 
