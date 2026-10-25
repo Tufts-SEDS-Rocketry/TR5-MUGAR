@@ -97,13 +97,14 @@ char* buffers[2];
 char FAKE_BUF[1000];
 
 void FlightComputer::process(uint32_t times, bool endless) {
+    /* make this seperate! */ 
     const size_t deploy_str_len = snprintf(FAKE_BUF, sizeof(FAKE_BUF), DEPLOY_FSTRING, LLONG_MIN, __FLT_MIN__, LLONG_MIN, __FLT_MIN__, LLONG_MIN, __FLT_MIN__, __FLT_MIN__, __FLT_MIN__, __FLT_MIN__, LLONG_MIN, LLONG_MIN, LLONG_MIN);
 
     struct timeval tv_now;
     buffers[0] = (char *)heap_caps_aligned_alloc(32, SD_DMA_BUF_LEN, MALLOC_CAP_DMA);
     buffers[1] = (char *)heap_caps_aligned_alloc(32, SD_DMA_BUF_LEN, MALLOC_CAP_DMA);
 
-    memset(buffers[0], 'X', sizeof(buffers[0]));
+    memset(buffers[0], 'X', sizeof(buffers[0])); // this is a bug, only writes over 4 bytes
     std::atomic<size_t> idxs[2] = {{0}, {0}};
     std::atomic<size_t> which_buf = {0};
     
@@ -117,7 +118,9 @@ void FlightComputer::process(uint32_t times, bool endless) {
     };
 
     [[maybe_unused]] TaskHandle_t handle = unwrap(this->sd.create_log_task(args));
+    /*  */
 
+    // duplicate logic to airbrakes.cpp
     StageStateMachine staging = StageStateMachine(true, ACCEL_BOOST, STANDBY_TIME, true, ACCEL_COAST_DIFF, true, COAST_TIME, COAST_ALTITUDE, APOGEE_WINDOW);
 
     if (GROUND_TEST) {
@@ -125,6 +128,20 @@ void FlightComputer::process(uint32_t times, bool endless) {
     }   
 
     StageStateMachine::Stage stage;
+
+    // all parachute data
+    // we should move this to a different class
+    // but then we have cross cutting concerns
+    // we should rethink our class model (doesn't just have to map the domain model)
+    // maybe a guess would be sensor collection class, parachute class, logging class?
+    // but then there are other concerns (bottlenecking on other data that we don't need)
+    // what is the best architccture for testing different archictectures?
+
+    // maybe best idea is to have each sensor class have a function to poll itself 
+    // and then we can check different arrangements
+
+    // lewis idea: one task per bus (i2c, etc.)
+    // task notifications
 
     bool drogue_triggered = false;
     bool main_triggered = false;
@@ -361,9 +378,12 @@ void FlightComputer::process(uint32_t times, bool endless) {
         }
         
         // no room left
+        // this is sd card logic
         if (SD_DMA_BUF_LEN - idx->load(std::memory_order_relaxed) <= sizeof(FCData) + deploy_str_len) {
             ESP_LOGI(TAG, "FLUSHING");
 
+            // parachute stuff get it out!!
+            // really these should be different files
             if (drogue_triggered && main_triggered && !data_written) {
                 size_t inc = snprintf(&buffers[which_buf.load(std::memory_order_relaxed)][idx->load(std::memory_order_relaxed)], 1000, DEPLOY_FSTRING, 
                     time_ms, staging.min_baro1_pres, staging.baro1_timestamp, staging.min_baro2_pres, staging.baro2_timestamp, main_deploy_b1_pressure, main_deploy_b2_pressure, main_deploy_trigger_b1_pressure, 
