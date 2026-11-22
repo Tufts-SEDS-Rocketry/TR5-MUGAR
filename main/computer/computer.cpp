@@ -14,6 +14,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "staging/staging.h"
+#include "sdkconfig.h"
 #include <sys/time.h>
 
 static const char *TAG = "computer";
@@ -118,11 +119,11 @@ void FlightComputer::process(uint32_t times, bool endless) {
 
     [[maybe_unused]] TaskHandle_t handle = unwrap(this->sd.create_log_task(args));
 
-    StageStateMachine staging = StageStateMachine(true, ACCEL_BOOST, STANDBY_TIME, true, ACCEL_COAST_DIFF, true, COAST_TIME, COAST_ALTITUDE, APOGEE_WINDOW);
+    StageStateMachine staging = StageStateMachine(true, CONFIG_ACCEL_BOOST, STANDBY_TIME, true, CONFIG_ACCEL_COAST_DIFF, true, COAST_TIME, COAST_ALTITUDE, APOGEE_WINDOW);
 
-    if (GROUND_TEST) {
-        staging = StageStateMachine(false, ACCEL_BOOST, STANDBY_TIME, false, ACCEL_COAST_DIFF, false, COAST_TIME, COAST_ALTITUDE, APOGEE_WINDOW);
-    }   
+    #ifdef CONFIG_GROUND_TEST 
+        staging = StageStateMachine(false, CONFIG_ACCEL_BOOST, STANDBY_TIME, false, CONFIG_ACCEL_COAST_DIFF, false, COAST_TIME, COAST_ALTITUDE, APOGEE_WINDOW);
+    #endif
 
     StageStateMachine::Stage stage;
 

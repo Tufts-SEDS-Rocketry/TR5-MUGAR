@@ -12,4 +12,18 @@ menu "Board Behavior"
         bool "Should the computer fail to start if no SD is inserted"
         default y if !AIRBRAKE_COMPUTER
         default n 
+    config GROUND_TEST
+        bool "Are we running a ground test (meaning state machine only bases transitions off barometer data)"
+        default n
+endmenu
+
+menu "State Machine Settings"
+    config ACCEL_BOOST
+        float "How much does the magnitude of acceleration have to change by before we transition to boost"
+        default 29.4 
+        # 3g
+    config ACCEL_COAST_DIFF
+        float "How much does the magnitude of acceleration have to change by before we transition to coast"
+        default -34.3
+        # -3.5g
 endmenu

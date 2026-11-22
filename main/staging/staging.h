@@ -1,22 +1,18 @@
 #pragma once
 
 #include <cmath>
+#include "sdkconfig.h"
 
 #include "errors.h"
 #include "i2c/BMI323.h"
 #include "i2c/BMP581.h"
 #include "i2c/high_g_accel.h"
 
-const float ACCEL_BOOST = 3.0 * 9.8;
-const float ACCEL_COAST_DIFF = -3.5 * 9.8;
-
 const int64_t STANDBY_TIME = 10000; // ms
 const float COAST_ALTITUDE = 2500 * 0.3048; // meters
 const float COAST_TIME = 6000; // ms
 
 const int64_t APOGEE_WINDOW = 500; // ms
-
-constexpr bool GROUND_TEST = true;
 
 namespace seds {
     using namespace seds::errors;

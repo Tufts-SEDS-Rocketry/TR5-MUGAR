@@ -15,6 +15,7 @@
 #include "control/control.h"
 #include "integration.h"
 #include "rotation/rotation.h"
+#include "sdkconfig.h"
 #include "staging/staging.h"
 
 static const char *TAG = "airbrakes";
@@ -149,11 +150,11 @@ void Airbrakes::run_steps() {
     TaskHandle_t integration_handle;
     xTaskCreatePinnedToCore(integrate_data, "integrating task", 4096, (void*)&integrate_args, priority, &integration_handle, t_core);
 
-    StageStateMachine staging = StageStateMachine(true, ACCEL_BOOST, STANDBY_TIME, true, ACCEL_COAST_DIFF, true, COAST_TIME, COAST_ALTITUDE, APOGEE_WINDOW);
+    StageStateMachine staging = StageStateMachine(true, CONFIG_ACCEL_BOOST, STANDBY_TIME, true, CONFIG_ACCEL_COAST_DIFF, true, COAST_TIME, COAST_ALTITUDE, APOGEE_WINDOW);
 
-    if (GROUND_TEST) {
-        staging = StageStateMachine(false, ACCEL_BOOST, STANDBY_TIME, false, ACCEL_COAST_DIFF, false, COAST_TIME, COAST_ALTITUDE, APOGEE_WINDOW);
-    }
+    #ifdef CONFIG_GROUND_TEST
+        staging = StageStateMachine(false, CONFIG_ACCEL_BOOST, STANDBY_TIME, false, CONFIG_ACCEL_COAST_DIFF, false, COAST_TIME, COAST_ALTITUDE, APOGEE_WINDOW);
+    #endif
 
     int64_t time_ms = 0;
 
