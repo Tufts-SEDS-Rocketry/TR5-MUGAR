@@ -119,10 +119,10 @@ void FlightComputer::process(uint32_t times, bool endless) {
 
     [[maybe_unused]] TaskHandle_t handle = unwrap(this->sd.create_log_task(args));
 
-    StageStateMachine staging = StageStateMachine(true, CONFIG_ACCEL_BOOST, CONFIG_STANDBY_TIME, true, CONFIG_ACCEL_COAST_DIFF, true, CONFIG_COAST_TIME, CONFIG_COAST_ALTITUDE, CONFIG_APOGEE_WINDOW);
-
     #ifdef CONFIG_GROUND_TEST 
-        staging = StageStateMachine(false, CONFIG_ACCEL_BOOST, CONFIG_STANDBY_TIME, false, CONFIG_ACCEL_COAST_DIFF, false, CONFIG_COAST_TIME, CONFIG_COAST_ALTITUDE, CONFIG_APOGEE_WINDOW);
+        StageStateMachine staging = StageStateMachine(false, CONFIG_ACCEL_BOOST, CONFIG_STANDBY_TIME, false, CONFIG_ACCEL_COAST_DIFF, false, CONFIG_COAST_TIME, CONFIG_COAST_ALTITUDE, CONFIG_APOGEE_WINDOW);
+    #else
+        StageStateMachine staging = StageStateMachine(true, CONFIG_ACCEL_BOOST, CONFIG_STANDBY_TIME, true, CONFIG_ACCEL_COAST_DIFF, true, CONFIG_COAST_TIME, CONFIG_COAST_ALTITUDE, CONFIG_APOGEE_WINDOW);
     #endif
 
     StageStateMachine::Stage stage;
