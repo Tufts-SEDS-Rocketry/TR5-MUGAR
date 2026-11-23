@@ -150,10 +150,10 @@ void Airbrakes::run_steps() {
     TaskHandle_t integration_handle;
     xTaskCreatePinnedToCore(integrate_data, "integrating task", 4096, (void*)&integrate_args, priority, &integration_handle, t_core);
 
-    StageStateMachine staging = StageStateMachine(true, CONFIG_ACCEL_BOOST, STANDBY_TIME, true, CONFIG_ACCEL_COAST_DIFF, true, COAST_TIME, COAST_ALTITUDE, APOGEE_WINDOW);
+    StageStateMachine staging = StageStateMachine(true, CONFIG_ACCEL_BOOST, CONFIG_STANDBY_TIME, true, CONFIG_ACCEL_COAST_DIFF, true, CONFIG_COAST_TIME, CONFIG_COAST_ALTITUDE, CONFIG_APOGEE_WINDOW);
 
     #ifdef CONFIG_GROUND_TEST
-        staging = StageStateMachine(false, CONFIG_ACCEL_BOOST, STANDBY_TIME, false, CONFIG_ACCEL_COAST_DIFF, false, COAST_TIME, COAST_ALTITUDE, APOGEE_WINDOW);
+        staging = StageStateMachine(false, CONFIG_ACCEL_BOOST, CONFIG_STANDBY_TIME, false, CONFIG_ACCEL_COAST_DIFF, false, CONFIG_COAST_TIME, CONFIG_COAST_ALTITUDE, CONFIG_APOGEE_WINDOW);
     #endif
 
     int64_t time_ms = 0;

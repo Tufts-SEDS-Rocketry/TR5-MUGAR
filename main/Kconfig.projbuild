@@ -26,4 +26,19 @@ menu "State Machine Settings"
         float "How much does the magnitude of acceleration have to change by before we transition to coast"
         default -34.3
         # -3.5g
+    config APOGEE_WINDOW
+        int "how long after min pressure do we say we've detected apogee, in ms"
+        default 500
+        help
+            This should be depreacted after we have a full Kalman filter system
+    config COAST_ALTITUDE
+        float "Altitude where we enter coast (estimate), in meters"
+        default 1480 
+        # from the irec openrocket sim (nov 15th)
+    config COAST_TIME
+        float "How long we expect to stay in coast, in ms"
+        default 6000
+    config STANDBY_TIME
+        int "How long we hold in standby for, at a minimum (ms)"
+        default 10000
 endmenu

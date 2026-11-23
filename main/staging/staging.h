@@ -8,12 +8,6 @@
 #include "i2c/BMP581.h"
 #include "i2c/high_g_accel.h"
 
-const int64_t STANDBY_TIME = 10000; // ms
-const float COAST_ALTITUDE = 2500 * 0.3048; // meters
-const float COAST_TIME = 6000; // ms
-
-const int64_t APOGEE_WINDOW = 500; // ms
-
 namespace seds {
     using namespace seds::errors;
 
